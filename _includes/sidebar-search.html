@@ -7,7 +7,7 @@
 <ul id="search_results"></ul>
 
 <link rel="stylesheet" type="text/css" href="{{ site.url }}/assets/css/modules/sidebar-search.css">
-<script src="{{ site.url }}/assets/js/jekyll-search.min.js"></script>
+<script src="{{ site.url }}/assets/js/simple-jekyll-search.min.js"></script>
 <script src="{{ site.url }}/assets/js/search.js"></script>
 
 <script type="text/javascript">
@@ -17,7 +17,7 @@ SimpleJekyllSearch({
     json: '{{ site.url }}/assets/search_data.json',
     searchResultTemplate: '<li><a href="{url}" title="{desc}">{title}</a></li>',
     noResultsText: 'No results found',
-    limit: 10,
+    limit: {{ site.simple_jekyll_search.limit }},
     fuzzy: false,
     exclude: ['Welcome']
 })

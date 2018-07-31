@@ -370,5 +370,129 @@ methods findViewById(int) from android.app.Activity and findViewById(int) from a
 
 项目里有几个模块，有的 compileSdkVersion 和 targetSdkVersion 是 25，有的是 26，全部改成 26 并把 appcompat-v7 等 dependencies 也改成 26 对应版本后问题消失。（但诡异的是我后来改回 25 想复现一下，问题却不再出现了）
 
+## Plugin with id 'com.android.application' not found
+
+导入一个别人做的工程的时候遇到报错：
+
+```
+Error:(1, 0) Plugin with id 'com.android.application' not found
+```
+
+怀疑是使用比较老的版本的 Android Studio 创建，该工程只有一个 build.gradle 文件——我们平时创建的工程应该是有两个，一个 Project 级别的，一个 Module 级别的。
+
+它是只有一个 Project 级别的 gradle 文件，但是内容却是 Module 级别 gradle 文件的内容。
+
+后来在 StackOverflow 上找到 [解决方案](https://stackoverflow.com/questions/24795079/error1-0-plugin-with-id-com-android-application-not-found)：
+
+在 build.gradle 文件顶部添加如下代码（注意 Gradle 版本与 Gradle Plugin 的版本对应）：
+
+```groovy
+buildscript {
+    repositories {
+        jcenter()
+        google()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.0.0'
+
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+allprojects {
+    repositories {
+        jcenter()
+        google()
+    }
+}
+```
+
+## 升级后 Gradle sync 出错
+
+从 Android Studio 3.0.1 升级到 3.1 的时候，`Check for Updates...` 提示超时，于是挂了代理升级。但是升级完成之后，打开以前能顺利构建的工程，提示 `Cause: jcenter.bintray.com:443 failed to respond`，怀疑是代理的原因，于是在 Settings 里将 HTTP Proxy 选项改为以前的 `no proxy`，报错变成 `Connection refused: connect`，搜索了一番之后找到 [这个](https://stackoverflow.com/questions/36330895/gradle-sync-failed-connection-refused)，依提示打开 ~/.gradle/gradle.properties，发现里面果然还存在代理的设置信息，删除之后重启 Android Studio，问题解决。
+
+## Generate JavaDoc 提示“错误: 编码GBK的不可映射字符”
+
+所有相关文件的编码都是 UTF-8，在 Android Studio 里没有找到设置 JavaDoc 相关的编码设置项，于是在 `Generate JavaDoc` 时弹出的 `Specify Generate JavaDoc Scope` 对话框的 `Other command line arguments` 一项里填入 `-encoding utf-8 -charset utf-8`，问题解决。
+
+![android-studio-javadoc](/images/posts/android/android-studio-javadoc.png)
+
+## 升级 Gradle Plugin 版本后报错
+
+```
+The SourceSet 'instrumentTest' is not recognized by the Android Gradle Plugin. Perhaps you misspelled something?
+```
+
+将 `android { sourceSets { } }` 里的 `instrumentTest.setRoot(...)` 改为 `androidTest.setRoot(...)` 后问题解决。
+
+## 编译报错 Error:Execution failed for task ':app:transformClassesWithDexForRelease'
+
+我这里的原因是一个 APP 依赖一个 Module，这两个使用了相同的包名，将 APP 的包名改了之后问题解决。
+
+## 升级到 3.1 后编辑 Gradle 文件卡顿
+
+不止是卡顿……基本上就是整个 Android Studio 卡住几十秒没办法动的那种。在网上搜索之后发现遇到这种问题的网友还挺多，果然是垃圾软件毁我青春 :-P。
+
+参考 <https://blog.csdn.net/wangluotianxi/article/details/79757558>，卡顿原因是编辑 Gradle 文件过程中一直在请求下面两个接口：
+
+```
+http://search.maven.org/solrsearch/select?q=g:%22com.google.android.support%22+AND+a:%22wearable%22&core=gav&rows=1&wt=json
+http://search.maven.org/solrsearch/select?q=g:%22com.google.android.gms%22+AND+a:%22play-services%22&core=gav&rows=1&wt=json
+```
+
+而且，结果返回之前会卡住界面，而我们的网络访问这俩网址基本只能等到超时返回了，所以，临时解决方案是在 hosts 文件里添加如下内容，让这俩请求快速失败返回：
+
+```
+127.0.0.1 search.maven.org
+```
+
+暂未发现对正常功能有影响。
+
+## 编译报错 You should manually set the same version via DependencyResolution
+
+> Android dependency 'org.mazhuang:commonlib' has different version for the compile (0.0.4) and runtime (0.0.5) classpath. You should manually set the same version via DependencyResolution
+
+Project A 使用了 Module B，A 依赖 commonlib(0.0.4)，而 Module B 里引用了 commonlib(0.0.5)，将 A 也改为依赖 commonlib(0.0.5) 即可。
+
+## 编译报错 Please use JDK 8 or newer
+
+Gradle Sync 的时候无法成功，报错
+
+```
+Gradle sync failed: Please use JDK 8 or newer
+```
+
+尝试 Rebuild 报错
+
+```
+Supplied javaHome is not a valid folder.
+```
+
+原因是我在 Project Settings 的 SDK Location 里手动指定了 JDK 的版本，但是后来升级了 JDK，所以原有路径失效了。
+
+解决方法是将 Project Settings 的 SDK Location 里 JDK 的路径改为正确路径，或者省事起见可以直接勾选 Use embedded JDK 即可。
+
+## 编译报错 Caused by: java.io.IOException: Cannot run program
+
+提示找不到 NDK 工具链里的 `mips64el-linux-android-strip`，导致 `Caused by: java.io.IOException: error=2`。
+
+原因是 NDK r17 移除了对 ARMv5(armeabi)、MIPS 和 MIPS64 的支持，所以对应的工具链也没有了。
+
+解决办法有几种：
+
+1. 检查 Gradle Plugin 的版本，即 project 级别的 build.gralde 文件里
+
+    ```groovy
+    dependencies {
+        classpath 'com.android.tools.build:gradle:3.1.3'
+        ...
+    }
+    ```
+
+    `com.android.tools.build:gradle` 的版本改为 3.1  以上。
+
+2. 将 NDK 版本退回 16b，或将 16b 以下的对应 mips 工具链的文件夹拷贝到 r17 的对应目录下。
+
 [1]: http://developer.android.com/tools/publishing/app-signing.html
 [2]: https://stackoverflow.com/questions/46949622/android-studio-3-0-unable-to-resolve-dependency-for-appdexoptions-compilecla#answer-47426050

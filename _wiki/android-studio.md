@@ -6,7 +6,7 @@ description: Android Studio 快捷键及使用技巧汇总
 keywords: Android, Android Studio
 ---
 
-本文主要记录 Android Studio 的使用技巧等，使用过程中遇到的问题详见我的另一篇博客 [Android Studio 遇到问题集锦](http://mazhuang.org/2015/05/06/android-studio/)。
+本文主要记录 Android Studio 的使用技巧等，使用过程中遇到的问题详见我的另一篇博客 [Android Studio 遇到问题集锦](https://mazhuang.org/2015/05/06/android-studio/)。
 
 ## 快捷键
 
@@ -122,6 +122,10 @@ Cmd --> Command
 
   根据 Gson 库使用的要求，根据 Json 数据生成 Java 实体
 
+* [intellij-javadocs](https://github.com/setial/intellij-javadocs)
+
+  自动生成/删除指定区域或文件的 javadoc。
+
 ## 打包
 
 * [Gradle编译打包小结](http://blog.csdn.net/byhook/article/details/51746825)
@@ -156,6 +160,115 @@ Cmd --> Command
 2. 在右侧找到 Code Generation 这个 tab，在 Naming 的 Prefer longer names 里，field 的 Name prefix 里填上 `m`，Static field 的 Name prefix 里填上 `s`。
 
 ![code generation naming](/images/wiki/code-generation-naming.png)
+
+### 设置 logcat 缓冲区条数
+
+logcat 默认缓冲区条数不大，在日志比较多的时候经常出现想要的信息被冲掉的情况，所以一般都将缓冲区条数设置大一些，方法：
+
+1. 关闭 Android Studio；
+
+2. 给 Android Studio 安装目录下的 bin/idea.properties 文件添加如下内容：
+
+   ```
+   idea.cycle.buffer.size=1024000
+   ```
+
+   这个数字可以根据需求修改。
+
+3. 启动 Android Studio。
+
+### 设置生成注释时的 author
+
+默认情况下文件头注释里的 author 是当前登录操作系统的用户名，如 Administrator 或 Lenovo 等，如果我们想替换成自己的名字，方法是打开 Android Studio 可执行程序，比如 studio64.exe 同目录下的 studio64.exe.vmoptions，在最下面加入这样一行：
+
+```
+-Duser.name=mazhuang
+```
+
+然后重新启动 Android Studio 即可。
+
+*此方法同样适用于 IntelliJ Idea，修改 idea64.exe.vmoptions 即可。*
+
+### 修改新建 Activity 的默认布局
+
+现在新建 Activity 等，layout 文件里的默认布局为 ConstraintLayout，这个布局被吹得神乎其技，但我还没有用惯……所以希望新建 Activity 的默认布局改为 RelativeLayout。
+
+在 StackOverflow 上搜索到解决方案：
+
+链接：[How to switch from the default ConstraintLayout to RelativeLayout in Android Studio](https://stackoverflow.com/questions/42261712/how-to-switch-from-the-default-constraintlayout-to-relativelayout-in-android-stu#answer-49653745)
+
+简述：
+
+1. 找到 Android Studio 安装目录，打开子目录 plugins/android/lib/templates/activities/common/root/res/layout，在下面应该能看到 simple.xml.ftl 文件，这就是我们新建 Activity 时的 layout 模板了；
+
+2. 备份 simple.xml.ftl 文件；
+
+3. 打开 simple.xml.ftl 文件，可以看到如下内容：
+
+    ```xml
+    <?xml version="1.0" encoding="utf-8"?>
+    <android.support.constraint.ConstraintLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+    <#if hasAppBar && appBarLayoutName??>
+        app:layout_behavior="@string/appbar_scrolling_view_behavior"
+        tools:showIn="@layout/${appBarLayoutName}"
+    </#if>
+        tools:context="${packageName}.${activityClass}">
+
+    <#if isNewProject!false>
+        <TextView
+    <#if includeCppSupport!false>
+            android:id="@+id/sample_text"
+    </#if>
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Hello World!"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </#if>
+    </android.support.constraint.ConstraintLayout>
+    ```
+
+    将这些内容修改为：
+
+    ```xml
+    <?xml version="1.0" encoding="utf-8"
+    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" >
+
+    </RelativeLayout>
+    ```
+
+4. 重启 Android Studio。
+
+同理，如果要修改新创建的 BlankFragment、ListFragment 等的默认布局，可以在 Android Studio 安装目录下的 plugins/android/lib/templates/other 下找到对应的模板内容并修改。
+
+这样修改之后，会导致一个问题，就是 Android Studio 升级会失败，提示：
+
+```
+Some conflicts were found in the installation area.
+
+Some on the conficts below do not have a solution, so the patch cannot be applied.
+
+Press Cancel to exit.
+```
+
+| File                                                                           | Action   | Problem  | Solution |
+|--------------------------------------------------------------------------------|----------|----------|----------|
+| plugins/android/lib/templates/activities/common/root/res/layout/simple.xml.ftl | Validate | Modified | NONE     |
+
+解决方案：
+
+将备份的文件贴回去，然后等 Android Studio 升级完成之后再改成我们想要的版本即可。
 
 ## 其它信息
 
